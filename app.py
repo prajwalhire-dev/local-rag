@@ -10,6 +10,13 @@ from langchain_community.llms import OpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 
 
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain, SimpleSequentialChain, SequentialChain
+from langchain_experimental.agents.agent_toolkits import create_python_agent
+from langchain_experimental.tools.python.tool import PythonREPLTool
+from langchain.agents.agent_types import AgentType
+from langchain.utilities import WikipediaAPIWrapper
+
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
@@ -121,6 +128,34 @@ if st.session_state.clicked[1]:
                 function_question_dataframe()
             if user_question_dataframe in ("no", "No"):
                 st.write("")
+
+
+                if user_question_dataframe:
+                    st.divider()
+                    st.header("Data Science Problem")
+                    st.write("Now that we have a solid grasp of the data at hand and a clear understanding of the variable we intend to investigate, it's important that we reframe our business problem into a data science problem.")
+                
+                    prompt = st.text_input("Add your prompt here")
+
+                    data_problem_template = PromptTemplate(
+                        input_variables=['business_problem'],
+                        template='Convert the following problem into a data science problem: {business_problem}.'
+                    )
+                    model_problem_template = PromptTemplate(
+                        input_variables=['data_problem'],
+                        template='Give a list of Machine learning algorithms that are suitable to solve this problem: {data_problem}.'
+                    )
+
+                    data_problem_chain = LLMChain(llm=llm, prompt=data_problem_template, verbose=True, output_key = 'data_problem')
+                    model_selection_problem_chain = LLMChain(llm=llm, prompt=model_problem_template, verbose=True, output_key = 'model_selection')
+
+                    sequential_chain = SequentialChain(chains = [data_problem_chain, model_selection_problem_chain], input_variables=['business_problem'],
+                                                       output_key=['data_problem','model_selection'],
+                                                       verbose=True )
+                    if prompt:
+                        response = sequential_chain({'business_problem':prompt})
+                        st.write(response['data_problem'])
+                        st.write(response['model_selection'])
 
 
 
